@@ -1,7 +1,7 @@
 class WaveManager {
   constructor() {
     this.wave = 0;
-    this.enemiesPerWave = 3;
+    this.enemiesPerWave = 5;
     this.enemiesSpawned = 0;
     this.enemiesAlive = 0;
     this.spawnTimer = 0;
@@ -10,14 +10,24 @@ class WaveManager {
     this.waveTimer = 0;
     this.waitingForNextWave = false;
     this.totalEnemiesThisWave = 0;
+    this.isBossWave = false;
+    this.bossSpawned = false;
   }
 
   startNextWave() {
     this.wave++;
-    this.enemiesPerWave = 5 + (this.wave - 1) * 3;
+    this.isBossWave = this.wave % 5 === 0;
     this.enemiesSpawned = 0;
     this.enemiesAlive = 0;
-    this.totalEnemiesThisWave = this.enemiesPerWave;
+    this.bossSpawned = false;
+
+    if (this.isBossWave) {
+      this.totalEnemiesThisWave = 3;
+      this.enemiesPerWave = 3;
+    } else {
+      this.enemiesPerWave = 5 + (this.wave - 1) * 3;
+      this.totalEnemiesThisWave = this.enemiesPerWave;
+    }
     this.spawnTimer = 0;
     this.waitingForNextWave = false;
   }
@@ -25,10 +35,15 @@ class WaveManager {
   update(dt, canvasWidth, canvasHeight, playerX, playerY) {
     if (this.waitingForNextWave) {
       this.waveTimer -= dt;
-      if (this.waveTimer <= 0) {
-        this.startNextWave();
-      }
-      return;
+      if (this.waveTimer <= 0) this.startNextWave();
+      return null;
+    }
+
+    if (this.isBossWave && !this.bossSpawned) {
+      this.bossSpawned = true;
+      this.enemiesAlive = 1 + this.totalEnemiesThisWave;
+      this.enemiesSpawned = 0;
+      return { boss: true, wave: this.wave, w: canvasWidth, h: canvasHeight };
     }
 
     this.spawnTimer -= dt;
@@ -49,26 +64,36 @@ class WaveManager {
         type = Math.random() < 0.3 ? 'tank' : 'swarmer';
       }
 
-      return spawnEnemy(type, canvasWidth, canvasHeight, playerX, playerY);
+      return { enemy: { type, x: canvasWidth, y: canvasHeight, px: playerX, py: playerY } };
     }
     return null;
   }
 
   onEnemyKilled() {
     this.enemiesAlive--;
-    if (this.enemiesAlive <= 0 && this.enemiesSpawned >= this.totalEnemiesThisWave) {
+    if (this.enemiesAlive <= 0 && this.enemiesSpawned >= this.totalEnemiesThisWave && !this.isBossWave) {
       this.waitingForNextWave = true;
       this.waveTimer = this.waveDelay;
     }
+    if (this.isBossWave && this.enemiesAlive <= 0) {
+      this.waitingForNextWave = true;
+      this.waveTimer = this.waveDelay + 1;
+    }
+  }
+
+  isLastBoss() {
+    return this.isBossWave && this.bossSpawned;
   }
 
   reset() {
     this.wave = 0;
-    this.enemiesPerWave = 3;
+    this.enemiesPerWave = 5;
     this.enemiesSpawned = 0;
     this.enemiesAlive = 0;
     this.spawnTimer = 0;
     this.waitingForNextWave = false;
     this.totalEnemiesThisWave = 0;
+    this.isBossWave = false;
+    this.bossSpawned = false;
   }
 }

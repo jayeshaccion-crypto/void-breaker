@@ -38,6 +38,11 @@ class Player {
     this.touchAimY = this.y;
     this.dashTouched = false;
 
+    this.moveDx = 0;
+    this.moveDy = 0;
+    this.muzzleFlash = 0;
+    this.thrusterTimer = 0;
+
     this.setupInput();
   }
 
@@ -72,29 +77,18 @@ class Player {
         const p = this.canvasCoords(t.clientX, t.clientY);
         const dashBtnX = this.canvas.width - 50;
         const dashBtnY = this.canvas.height - 55;
-
         if (Math.sqrt((p.x - dashBtnX) ** 2 + (p.y - dashBtnY) ** 2) < DASH_BTN_RADIUS + 10) {
-          this.dashTouched = true;
-          this.touchDash();
-          continue;
+          this.dashTouched = true; this.touchDash(); continue;
         }
-
         if (p.x < this.canvas.width * 0.45 && !this.joystick.active) {
-          this.joystick.active = true;
-          this.joystick.id = t.identifier;
-          this.joystick.sx = p.x;
-          this.joystick.sy = p.y;
-          this.joystick.cx = p.x;
-          this.joystick.cy = p.y;
-          this.joystick.dx = 0;
-          this.joystick.dy = 0;
+          this.joystick.active = true; this.joystick.id = t.identifier;
+          this.joystick.sx = p.x; this.joystick.sy = p.y;
+          this.joystick.cx = p.x; this.joystick.cy = p.y;
+          this.joystick.dx = 0; this.joystick.dy = 0;
         } else if (!this.aimTouch.active) {
-          this.aimTouch.active = true;
-          this.aimTouch.id = t.identifier;
-          this.aimTouch.x = p.x;
-          this.aimTouch.y = p.y;
-          this.touchAimX = p.x;
-          this.touchAimY = p.y;
+          this.aimTouch.active = true; this.aimTouch.id = t.identifier;
+          this.aimTouch.x = p.x; this.aimTouch.y = p.y;
+          this.touchAimX = p.x; this.touchAimY = p.y;
         }
       }
     }, { passive: false });
@@ -103,28 +97,19 @@ class Player {
       e.preventDefault();
       for (const t of e.changedTouches) {
         const p = this.canvasCoords(t.clientX, t.clientY);
-
         if (t.identifier === this.joystick.id && this.joystick.active) {
-          this.joystick.cx = p.x;
-          this.joystick.cy = p.y;
-          let dx = p.x - this.joystick.sx;
-          let dy = p.y - this.joystick.sy;
+          this.joystick.cx = p.x; this.joystick.cy = p.y;
+          let dx = p.x - this.joystick.sx, dy = p.y - this.joystick.sy;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist > JOYSTICK_RADIUS) {
-            dx = (dx / dist) * JOYSTICK_RADIUS;
-            dy = (dy / dist) * JOYSTICK_RADIUS;
-            this.joystick.cx = this.joystick.sx + dx;
-            this.joystick.cy = this.joystick.sy + dy;
+            dx = (dx / dist) * JOYSTICK_RADIUS; dy = (dy / dist) * JOYSTICK_RADIUS;
+            this.joystick.cx = this.joystick.sx + dx; this.joystick.cy = this.joystick.sy + dy;
           }
-          this.joystick.dx = dx / JOYSTICK_RADIUS;
-          this.joystick.dy = dy / JOYSTICK_RADIUS;
+          this.joystick.dx = dx / JOYSTICK_RADIUS; this.joystick.dy = dy / JOYSTICK_RADIUS;
         }
-
         if (t.identifier === this.aimTouch.id && this.aimTouch.active) {
-          this.aimTouch.x = p.x;
-          this.aimTouch.y = p.y;
-          this.touchAimX = p.x;
-          this.touchAimY = p.y;
+          this.aimTouch.x = p.x; this.aimTouch.y = p.y;
+          this.touchAimX = p.x; this.touchAimY = p.y;
         }
       }
     }, { passive: false });
@@ -133,41 +118,28 @@ class Player {
       e.preventDefault();
       for (const t of e.changedTouches) {
         if (t.identifier === this.joystick.id && this.joystick.active) {
-          this.joystick.active = false;
-          this.joystick.id = -1;
-          this.joystick.dx = 0;
-          this.joystick.dy = 0;
+          this.joystick.active = false; this.joystick.id = -1; this.joystick.dx = 0; this.joystick.dy = 0;
         }
         if (t.identifier === this.aimTouch.id && this.aimTouch.active) {
-          this.aimTouch.active = false;
-          this.aimTouch.id = -1;
+          this.aimTouch.active = false; this.aimTouch.id = -1;
         }
         this.dashTouched = false;
       }
     }, { passive: false });
 
     this.canvas.addEventListener('touchcancel', e => {
-      this.joystick.active = false;
-      this.joystick.id = -1;
-      this.joystick.dx = 0;
-      this.joystick.dy = 0;
-      this.aimTouch.active = false;
-      this.aimTouch.id = -1;
-      this.dashTouched = false;
+      this.joystick.active = false; this.joystick.id = -1; this.joystick.dx = 0; this.joystick.dy = 0;
+      this.aimTouch.active = false; this.aimTouch.id = -1; this.dashTouched = false;
     }, { passive: false });
   }
 
   touchDash() {
     if (this.isDashing || this.dashCooldown > 0) return;
-    const dx = this.joystick.dx || 0;
-    const dy = this.joystick.dy || 0;
+    const dx = this.joystick.dx || 0, dy = this.joystick.dy || 0;
     if (dx === 0 && dy === 0) return;
-    this.isDashing = true;
-    this.dashTimer = DASH_DURATION;
-    this.dashCooldown = DASH_COOLDOWN;
+    this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN;
     this.dashDir = { x: dx, y: dy };
-    this.invulnerable = true;
-    this.invulnTimer = DASH_DURATION + 0.1;
+    this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
     sound.dash();
   }
 
@@ -180,6 +152,8 @@ class Player {
     }
 
     this.dashCooldown -= dt;
+    if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+
     if (this.isDashing) {
       this.dashTimer -= dt;
       this.x += this.dashDir.x * DASH_SPEED * dt;
@@ -189,26 +163,24 @@ class Player {
       let dx = 0, dy = 0;
 
       if (this.joystick.active) {
-        dx = this.joystick.dx;
-        dy = this.joystick.dy;
+        dx = this.joystick.dx; dy = this.joystick.dy;
       } else {
-        if (this.keys['w'] || this.keys['ArrowUp'.toLowerCase()] || this.keys['arrowup']) dy = -1;
+        if (this.keys['w'] || this.keys['arrowup']) dy = -1;
         if (this.keys['s'] || this.keys['arrowdown']) dy = 1;
         if (this.keys['a'] || this.keys['arrowleft']) dx = -1;
         if (this.keys['d'] || this.keys['arrowright']) dx = 1;
         if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
       }
 
+      this.moveDx = dx;
+      this.moveDy = dy;
       this.x += dx * this.speed * dt;
       this.y += dy * this.speed * dt;
 
       if (this.joystick.active && (this.keys['shift'] || this.dashTouched) && this.dashCooldown <= 0 && (dx !== 0 || dy !== 0)) {
-        this.isDashing = true;
-        this.dashTimer = DASH_DURATION;
-        this.dashCooldown = DASH_COOLDOWN;
+        this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN;
         this.dashDir = { x: dx, y: dy };
-        this.invulnerable = true;
-        this.invulnTimer = DASH_DURATION + 0.1;
+        this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
         sound.dash();
       }
     }
@@ -217,12 +189,10 @@ class Player {
     this.y = Math.max(this.radius, Math.min(this.canvas.height - this.radius, this.y));
 
     if (this.joystick.active) {
-      const aimDx = this.touchAimX - this.x;
-      const aimDy = this.touchAimY - this.y;
+      const aimDx = this.touchAimX - this.x, aimDy = this.touchAimY - this.y;
       this.angle = Math.atan2(aimDy, aimDx);
     } else {
-      const aimDx = this.mouseX - this.x;
-      const aimDy = this.mouseY - this.y;
+      const aimDx = this.mouseX - this.x, aimDy = this.mouseY - this.y;
       this.angle = Math.atan2(aimDy, aimDx);
     }
 
@@ -230,11 +200,18 @@ class Player {
     this.shooting = (this.mouseDown || this.keys[' '] || this.aimTouch.active) && this.fireTimer <= 0;
     if (this.shooting) {
       this.fireTimer = this.fireRate;
+      this.muzzleFlash = 0.06;
     }
   }
 
   takeDamage() {
     if (this.invulnerable) return false;
+    if (this.powerups.shield) {
+      this.powerups.shield = false;
+      this.invulnerable = true;
+      this.invulnTimer = 0.5;
+      return false;
+    }
     this.health--;
     this.invulnerable = true;
     this.invulnTimer = 1.0;
@@ -258,6 +235,9 @@ class Player {
     this.joystick.dy = 0;
     this.aimTouch.active = false;
     this.aimTouch.id = -1;
+    this.moveDx = 0;
+    this.moveDy = 0;
+    this.muzzleFlash = 0;
   }
 
   draw(ctx) {
@@ -265,8 +245,43 @@ class Player {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
 
+    if (this.powerups.shield) {
+      ctx.globalAlpha = 0.15 + Math.sin(Date.now() / 200) * 0.08;
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
     if (this.invulnerable && Math.floor(this.invulnTimer * 10) % 2 === 0) {
       ctx.globalAlpha = 0.4;
+    }
+
+    if (this.moveDx !== 0 || this.moveDy !== 0) {
+      const tAngle = Math.atan2(-this.moveDy, -this.moveDx);
+      ctx.save();
+      ctx.rotate(tAngle - this.angle);
+      ctx.globalAlpha = 0.5 + Math.random() * 0.3;
+      ctx.fillStyle = '#ff6600';
+      ctx.beginPath();
+      ctx.moveTo(-this.radius * 0.5, -3);
+      ctx.lineTo(-this.radius - 8 - Math.random() * 6, 0);
+      ctx.lineTo(-this.radius * 0.5, 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    if (this.muzzleFlash > 0) {
+      ctx.fillStyle = '#ffff88';
+      ctx.globalAlpha = this.muzzleFlash / 0.06;
+      ctx.beginPath();
+      ctx.arc(this.radius + 4, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
 
     ctx.fillStyle = '#00ccff';
@@ -317,7 +332,6 @@ class Player {
     ctx.beginPath();
     ctx.arc(dashBtnX, dashBtnY, DASH_BTN_RADIUS, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.globalAlpha = cd > 0 ? 0.4 : 0.9;
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 14px monospace';

@@ -107,6 +107,14 @@ class SoundManager {
     setTimeout(() => this.playTone(196, 0.8, 'sawtooth', 0.4, 0), 900);
   }
 
+  bossAppear() {
+    this.playTone(196, 0.3, 'sawtooth', 0.5, 0);
+    setTimeout(() => this.playTone(262, 0.3, 'sawtooth', 0.5, 0), 200);
+    setTimeout(() => this.playTone(330, 0.3, 'sawtooth', 0.5, 0), 400);
+    setTimeout(() => this.playTone(440, 0.5, 'sawtooth', 0.6, 0), 600);
+    setTimeout(() => this.playNoise(0.3, 0.6), 800);
+  }
+
   startBGM() {
     this.init();
     if (!this.ctx || this.bgmPlaying) return;

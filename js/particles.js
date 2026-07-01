@@ -2,6 +2,7 @@ class ParticleSystem {
   constructor() {
     this.particles = [];
     this.screenShake = 0;
+    this.thrusterEmit = 0;
   }
 
   burst(x, y, color, count = 15, speed = 200) {
@@ -20,6 +21,23 @@ class ParticleSystem {
     }
   }
 
+  bigBurst(x, y, color, count = 40, speed = 350) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = (Math.random() * 0.5 + 0.5) * speed;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: Math.random() * 0.8 + 0.5,
+        maxLife: Math.random() * 0.8 + 0.5,
+        radius: Math.random() * 4 + 2,
+        color: Math.random() < 0.5 ? color : '#ffffff',
+      });
+    }
+    this.screenShake = 0.4;
+  }
+
   hitEffect(x, y) {
     this.burst(x, y, '#ffffff', 10, 150);
     this.screenShake = 0.15;
@@ -33,9 +51,7 @@ class ParticleSystem {
       p.vx *= 0.97;
       p.vy *= 0.97;
       p.life -= dt;
-      if (p.life <= 0) {
-        this.particles.splice(i, 1);
-      }
+      if (p.life <= 0) this.particles.splice(i, 1);
     }
     if (this.screenShake > 0) this.screenShake -= dt;
   }
