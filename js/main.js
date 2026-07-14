@@ -1,8 +1,8 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-canvas.width = 800;
-canvas.height = 600;
+canvas.width = 960;
+canvas.height = 540;
 
 const state = {
   current: 'menu',
@@ -10,6 +10,10 @@ const state = {
   highScore: parseInt(localStorage.getItem('voidbreaker_highscore') || '0', 10),
   isNewHighScore: false,
   paused: false,
+  muted: false,
+  upgradeCards: [],
+  upgradeTimer: 0,
+  bossIncomingTimer: 0,
 };
 
 const player = new Player(canvas);
@@ -29,7 +33,7 @@ const starLayers = [];
 function initStars() {
   for (let layer = 0; layer < 3; layer++) {
     starLayers[layer] = [];
-    const count = 40 + layer * 20;
+    const count = 50 + layer * 25;
     for (let i = 0; i < count; i++) {
       starLayers[layer].push({
         x: Math.random() * canvas.width,
@@ -71,14 +75,32 @@ function handleBossAttack(attacks) {
   for (const a of attacks) {
     if (a.summon) {
       const e = new Enemy(a.type, a.x, a.y, player.x, player.y);
-      e.radius = 8; e.speed = 220; e.health = 1; e.color = '#ffaa00'; e.points = 50;
       enemies.push(e);
-      waveManager.onEnemyKilled();
-      waveManager.onEnemyKilled();
+      waveManager.onEnemySpawned();
     } else {
       bulletPool.fireEnemy(a.bx, a.by, a.bvx, a.bvy, a.bspeed);
     }
   }
+}
+
+function applyUpgrade(card) {
+  if (!card) return;
+  player.upgrades.push(card.id);
+  card.apply(player);
+}
+
+function beginUpgradePick() {
+  state.current = 'upgrade_pick';
+  state.upgradeCards = upgradeManager.selectCards(waveManager.wave);
+  state.upgradeTimer = 2;
+}
+
+function completeUpgradePick(card) {
+  if (card) applyUpgrade(card);
+  waveManager.startNextWave();
+  state.current = 'playing';
+  state.paused = false;
+  sound.waveStart();
 }
 
 function checkCollisions() {
@@ -98,10 +120,15 @@ function checkCollisions() {
     }
 
     for (const b of bulletPool.playerBullets) {
-      if (!b.active) continue;
+      if (!b || !b.active) continue;
       const bdx = b.x - e.x, bdy = b.y - e.y;
       if (bdx * bdx + bdy * bdy < (b.radius + e.radius) * (b.radius + e.radius)) {
         b.active = false;
+        if (player.upgradeData.scattershot) {
+          for (let s = -1; s <= 1; s += 2) {
+            bulletPool.firePlayer(b.x, b.y, Math.atan2(b.vy, b.vx) + s * 0.15);
+          }
+        }
         if (e.takeDamage()) {
           sound.enemyDeath();
           const mult = Math.min(1 + streak * 0.1, 3);
@@ -142,11 +169,11 @@ function checkCollisions() {
     }
 
     for (const b of bulletPool.playerBullets) {
-      if (!b.active) continue;
+      if (!b || !b.active) continue;
       const bdx2 = b.x - boss.x, bdy2 = b.y - boss.y;
       if (bdx2 * bdx2 + bdy2 * bdy2 < (b.radius + boss.radius) * (b.radius + boss.radius)) {
         b.active = false;
-        if (boss.takeDamage()) {
+        if (boss.takeDamage(1, b.x, b.y)) {
           sound.enemyDeath();
           const mult = Math.min(1 + streak * 0.1, 3);
           state.score += Math.floor(boss.points * mult);
@@ -159,11 +186,10 @@ function checkCollisions() {
         }
       }
     }
-
   }
 
   for (const b of bulletPool.enemyBullets) {
-    if (!b.active) continue;
+    if (!b || !b.active) continue;
     const bdx = b.x - player.x, bdy = b.y - player.y;
     if (bdx * bdx + bdy * bdy < (b.radius + player.radius) * (b.radius + player.radius)) {
       b.active = false;
@@ -173,11 +199,12 @@ function checkCollisions() {
     }
   }
 
+  const pickupRange = player.radius * player.upgradeData.pickupRange;
   for (let i = powerups.length - 1; i >= 0; i--) {
     const p = powerups[i];
     if (!p.active) { powerups.splice(i, 1); continue; }
     const pdx = player.x - p.x, pdy = player.y - p.y;
-    if (pdx * pdx + pdy * pdy < (player.radius + p.radius) * (player.radius + p.radius)) {
+    if (pdx * pdx + pdy * pdy < (pickupRange + p.radius) * (pickupRange + p.radius)) {
       sound.powerUp();
       p.apply(player);
       powerups.splice(i, 1);
@@ -201,9 +228,11 @@ function resetGame() {
   state.paused = false;
   state.score = 0;
   state.isNewHighScore = false;
+  state.bossIncomingTimer = 0;
   streak = 0;
   streakTimer = 0;
   boss = null;
+  upgradeManager.reset();
   player.reset();
   enemies.length = 0;
   powerups.length = 0;
@@ -217,18 +246,35 @@ function resetGame() {
 }
 
 function update(dt) {
+  if (state.current === 'upgrade_pick') {
+    state.upgradeTimer -= dt;
+    if (state.upgradeTimer <= 0) {
+      const card = upgradeManager.autoPick();
+      completeUpgradePick(card);
+    }
+    return;
+  }
+
   if (state.current !== 'playing' || state.paused) return;
 
   player.update(dt);
   if (player.shooting) firePlayerBullet();
+
+  if (state.bossIncomingTimer > 0) {
+    state.bossIncomingTimer -= dt;
+    if (state.bossIncomingTimer <= 0) {
+      boss = spawnBoss(waveManager.wave, canvas.width, canvas.height);
+      sound.bossAppear();
+    }
+    return;
+  }
 
   prevWave = waveManager.wave;
   const spawnResult = waveManager.update(dt, canvas.width, canvas.height, player.x, player.y);
 
   if (spawnResult) {
     if (spawnResult.boss) {
-      boss = spawnBoss(spawnResult.wave, spawnResult.w, spawnResult.h);
-      sound.bossAppear();
+      state.bossIncomingTimer = 1.5;
     } else if (spawnResult.enemy) {
       const e = spawnResult.enemy;
       enemies.push(spawnEnemy(e.type, e.x, e.y, e.px, e.py));
@@ -262,6 +308,10 @@ function update(dt) {
 
   if (streakTimer > 0) streakTimer -= dt;
   else streak = 0;
+
+  if (waveManager.waitingForNextWave) {
+    beginUpgradePick();
+  }
 }
 
 function updateStars(dt) {
@@ -299,7 +349,7 @@ function draw() {
 
   if (state.current === 'menu') {
     ui.drawMenu(ctx, state.highScore);
-  } else if (state.current === 'playing' || state.current === 'gameover') {
+  } else if (state.current === 'playing' || state.current === 'gameover' || state.current === 'upgrade_pick') {
     player.draw(ctx);
     for (const e of enemies) e.draw(ctx);
     if (boss && boss.active) boss.draw(ctx);
@@ -316,11 +366,26 @@ function draw() {
 
   ctx.restore();
 
+  if (state.current === 'upgrade_pick') {
+    ui.drawUpgradePick(ctx, state.upgradeCards, state.upgradeTimer);
+  }
+
   if (state.current === 'gameover') ui.drawGameOver(ctx, state.score, state.highScore, state.isNewHighScore);
+
+  if (state.current === 'playing' && state.bossIncomingTimer > 0) ui.drawBossIncoming(ctx, state.bossIncomingTimer, waveManager.wave);
 
   if (state.current === 'playing' && state.paused) ui.drawPauseOverlay(ctx);
 
   if (state.current === 'playing') player.drawTouchControls(ctx);
+
+  if (state.muted) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'right';
+    ctx.globalAlpha = 0.5;
+    ctx.fillText('MUTED', canvas.width - 16, canvas.height - 16);
+    ctx.globalAlpha = 1;
+  }
 }
 
 let lastTime = 0;
@@ -340,6 +405,24 @@ function handleStart() {
   }
 }
 
+canvas.addEventListener('click', e => {
+  if (state.current === 'menu' || state.current === 'gameover') {
+    handleStart();
+    return;
+  }
+  if (state.current === 'upgrade_pick') {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const idx = ui.hitTestUpgradeCard(mx, my, state.upgradeCards);
+    if (idx >= 0) {
+      const card = upgradeManager.pick(idx);
+      if (card) completeUpgradePick(card);
+    }
+    return;
+  }
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') {
     if (state.current === 'menu' || state.current === 'gameover') handleStart();
@@ -347,9 +430,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && state.current === 'playing') {
     state.paused = !state.paused;
   }
+  if (e.key === 'm' || e.key === 'M') {
+    state.muted = !state.muted;
+    sound.toggleMute(state.muted);
+  }
+  if (state.current === 'upgrade_pick') {
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 3) {
+      const card = upgradeManager.pick(n - 1);
+      if (card) completeUpgradePick(card);
+    }
+  }
 });
 
-canvas.addEventListener('click', () => { handleStart(); });
 canvas.addEventListener('touchend', e => {
   if (state.current === 'menu' || state.current === 'gameover') handleStart();
 });

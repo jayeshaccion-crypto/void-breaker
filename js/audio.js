@@ -150,6 +150,11 @@ class SoundManager {
     schedule();
   }
 
+  toggleMute(muted) {
+    if (!this.ctx) return;
+    this.masterGain.gain.value = muted ? 0 : 1;
+  }
+
   stopBGM() {
     this.bgmPlaying = false;
   }

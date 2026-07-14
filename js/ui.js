@@ -92,6 +92,103 @@ class UI {
     }
   }
 
+  drawUpgradePick(ctx, cards, timer) {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '32px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('CHOOSE AN UPGRADE', this.canvas.width / 2, 70);
+
+    const cardW = 200;
+    const cardH = 200;
+    const gap = 30;
+    const totalW = cards.length * cardW + (cards.length - 1) * gap;
+    const startX = (this.canvas.width - totalW) / 2;
+    const cardY = (this.canvas.height - cardH) / 2 + 20;
+
+    const tierColors = { 1: '#4a9eff', 2: '#ffaa00', 3: '#ff44ff' };
+    const tierNames = { 1: 'TIER 1', 2: 'TIER 2', 3: 'TIER 3' };
+
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i];
+      const cx = startX + i * (cardW + gap);
+      const color = tierColors[c.tier] || '#fff';
+
+      ctx.fillStyle = 'rgba(20,20,40,0.95)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      roundRect(ctx, cx, cardY, cardW, cardH, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(tierNames[c.tier] || '', cx + cardW / 2, cardY + 20);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText(c.name, cx + cardW / 2, cardY + 55);
+
+      ctx.fillStyle = '#ccc';
+      ctx.font = '13px monospace';
+      wrapText(ctx, c.desc, cx + 15, cardY + 90, cardW - 30, 18);
+
+      if (c.unique) {
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = '10px monospace';
+        ctx.fillText('UNIQUE', cx + cardW / 2, cardY + cardH - 18);
+      }
+    }
+
+    const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Auto-pick in ${Math.max(0, Math.ceil(timer))}s  |  Press 1-3`, this.canvas.width / 2, this.canvas.height - 40);
+    ctx.globalAlpha = 1;
+  }
+
+  hitTestUpgradeCard(mx, my, cards) {
+    const cardW = 200;
+    const cardH = 200;
+    const gap = 30;
+    const totalW = cards.length * cardW + (cards.length - 1) * gap;
+    const startX = (this.canvas.width - totalW) / 2;
+    const cardY = (this.canvas.height - cardH) / 2 + 20;
+    for (let i = 0; i < cards.length; i++) {
+      const cx = startX + i * (cardW + gap);
+      if (mx >= cx && mx <= cx + cardW && my >= cardY && my <= cardY + cardH) return i;
+    }
+    return -1;
+  }
+
+  drawBossIncoming(ctx, timer, wave) {
+    ctx.fillStyle = timer > 1.3 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    const scale = Math.min(1, 1.5 - timer);
+    ctx.save();
+    ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#ff2266';
+    ctx.font = 'bold 48px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BOSS INCOMING', 0, -20);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '18px monospace';
+    ctx.fillText('Wave ' + wave, 0, 36);
+
+    ctx.restore();
+  }
+
   drawPauseOverlay(ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -109,7 +206,9 @@ class UI {
     const barW = 300;
     const barH = 8;
     const barX = (this.canvas.width - barW) / 2;
-    const barY = 56;
+    const slide = boss.healthBarSlide || 0;
+    const eased = slide < 1 ? 1 - (1 - slide) * (1 - slide) : 1;
+    const barY = 56 + (1 - eased) * -40;
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
@@ -135,7 +234,7 @@ class UI {
     ctx.font = '16px monospace';
     ctx.fillText('WASD / Arrows to move  |  Mouse to aim', this.canvas.width / 2, this.canvas.height / 2 - 20);
     ctx.fillText('Click / Space to fire  |  Shift to dash', this.canvas.width / 2, this.canvas.height / 2 + 6);
-    ctx.fillText('Escape to pause  |  Boss every 5th wave', this.canvas.width / 2, this.canvas.height / 2 + 32);
+    ctx.fillText('Escape to pause  |  M to mute  |  Boss every 5th wave', this.canvas.width / 2, this.canvas.height / 2 + 32);
 
     if (highScore > 0) {
       ctx.fillStyle = '#ffaa00';
@@ -182,4 +281,35 @@ class UI {
     ctx.fillText('Click or press Enter to restart', this.canvas.width / 2, this.canvas.height / 2 + 120);
     ctx.globalAlpha = 1;
   }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let ly = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, ly);
+      line = w;
+      ly += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, ly);
 }

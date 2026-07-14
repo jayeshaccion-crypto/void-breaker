@@ -43,6 +43,22 @@ class Player {
     this.muzzleFlash = 0;
     this.thrusterTimer = 0;
 
+    this.upgrades = [];
+    this.upgradeData = {
+      fireRateMult: 1,
+      dashCdReduction: 0,
+      scattershot: false,
+      pickupRange: 1,
+      chainLightning: false,
+      afterburn: false,
+      ghostDash: false,
+      bouncer: false,
+      blackHole: false,
+      overload: false,
+      twinShip: false,
+      overloadCounter: 0,
+    };
+
     this.setupInput();
   }
 
@@ -137,7 +153,7 @@ class Player {
     if (this.isDashing || this.dashCooldown > 0) return;
     const dx = this.joystick.dx || 0, dy = this.joystick.dy || 0;
     if (dx === 0 && dy === 0) return;
-    this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN;
+    this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN - this.upgradeData.dashCdReduction;
     this.dashDir = { x: dx, y: dy };
     this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
     sound.dash();
@@ -178,7 +194,7 @@ class Player {
       this.y += dy * this.speed * dt;
 
       if (this.joystick.active && (this.keys['shift'] || this.dashTouched) && this.dashCooldown <= 0 && (dx !== 0 || dy !== 0)) {
-        this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN;
+        this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN - this.upgradeData.dashCdReduction;
         this.dashDir = { x: dx, y: dy };
         this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
         sound.dash();
@@ -196,10 +212,11 @@ class Player {
       this.angle = Math.atan2(aimDy, aimDx);
     }
 
+    const adjustedFireRate = this.fireRate * this.upgradeData.fireRateMult;
     this.fireTimer -= dt;
     this.shooting = (this.mouseDown || this.keys[' '] || this.aimTouch.active) && this.fireTimer <= 0;
     if (this.shooting) {
-      this.fireTimer = this.fireRate;
+      this.fireTimer = adjustedFireRate;
       this.muzzleFlash = 0.06;
     }
   }
@@ -229,6 +246,12 @@ class Player {
     this.dashTimer = 0;
     this.fireTimer = 0;
     this.powerups = {};
+    this.upgrades = [];
+    this.upgradeData = {
+      fireRateMult: 1, dashCdReduction: 0, scattershot: false, pickupRange: 1,
+      chainLightning: false, afterburn: false, ghostDash: false, bouncer: false,
+      blackHole: false, overload: false, twinShip: false, overloadCounter: 0,
+    };
     this.joystick.active = false;
     this.joystick.id = -1;
     this.joystick.dx = 0;

@@ -34,14 +34,12 @@ class WaveManager {
 
   update(dt, canvasWidth, canvasHeight, playerX, playerY) {
     if (this.waitingForNextWave) {
-      this.waveTimer -= dt;
-      if (this.waveTimer <= 0) this.startNextWave();
       return null;
     }
 
     if (this.isBossWave && !this.bossSpawned) {
       this.bossSpawned = true;
-      this.enemiesAlive = 1 + this.totalEnemiesThisWave;
+      this.enemiesAlive = 1;
       this.enemiesSpawned = 0;
       return { boss: true, wave: this.wave, w: canvasWidth, h: canvasHeight };
     }
@@ -67,6 +65,10 @@ class WaveManager {
       return { enemy: { type, x: canvasWidth, y: canvasHeight, px: playerX, py: playerY } };
     }
     return null;
+  }
+
+  onEnemySpawned() {
+    this.enemiesAlive++;
   }
 
   onEnemyKilled() {

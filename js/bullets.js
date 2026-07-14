@@ -13,7 +13,7 @@ class BulletPool {
   }
 
   firePlayer(x, y, angle, speed = 500) {
-    const b = this.playerBullets.find(b => !b.active);
+    const b = this.playerBullets.find(b => b && !b.active);
     if (!b) return;
     b.x = x;
     b.y = y;
@@ -24,7 +24,7 @@ class BulletPool {
   }
 
   fireEnemy(x, y, vx, vy, speed = 300) {
-    const b = this.enemyBullets.find(b => !b.active);
+    const b = this.enemyBullets.find(b => b && !b.active);
     if (!b) return;
     const len = Math.sqrt(vx * vx + vy * vy) || 1;
     b.x = x;
@@ -38,11 +38,11 @@ class BulletPool {
   update(dt) {
     for (const arr of [this.playerBullets, this.enemyBullets]) {
       for (const b of arr) {
-        if (!b.active) continue;
+        if (!b || !b.active) continue;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.life -= dt;
-        if (b.life <= 0 || b.x < -50 || b.x > 850 || b.y < -50 || b.y > 650) {
+        if (b.life <= 0 || b.x < -50 || b.x > canvas.width + 50 || b.y < -50 || b.y > canvas.height + 50) {
           b.active = false;
         }
       }
@@ -52,14 +52,14 @@ class BulletPool {
   draw(ctx) {
     ctx.fillStyle = '#fff';
     for (const b of this.playerBullets) {
-      if (!b.active) continue;
+      if (!b || !b.active) continue;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.fillStyle = '#ff4444';
     for (const b of this.enemyBullets) {
-      if (!b.active) continue;
+      if (!b || !b.active) continue;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
       ctx.fill();
