@@ -40,7 +40,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Vanilla-Only, Zero-Build Runtime**: Plan adds no framework, engine, build step, runtime
+  dependency, or external asset; the game remains runnable from `index.html` or a static server.
+- **Deterministic Gameplay Contracts**: Every affected numeric value traces to the active spec;
+  game data is data-driven; gameplay randomness uses the run-scoped source.
+- **Phase-Scoped Delivery**: Work matches the active milestone order and contains no unlisted
+  feature, enemy, upgrade, weapon, or screen; deferred items remain deferred.
+- **Performance and Resource Discipline**: Plan preserves 60fps, 960x540 letterboxed rendering,
+  delta-time movement, 40-enemy/200-bullet caps, pooling, and safe `voidbreaker.meta` persistence.
+- **Playable, Testable Acceptance**: Plan defines a full playthrough check, prior-phase regression
+  check, zero-console-error criterion, and explicit milestone go-ahead gate.
 
 ## Project Structure
 
