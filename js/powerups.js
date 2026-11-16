@@ -1,12 +1,18 @@
 const POWERUP_TYPES = ['spread', 'rapid', 'shield', 'health'];
 const POWERUP_RADIUS = 10;
 const DURATION = 8;
+const BASE_DROP_RATE = 0.2;
+const BONUS_DROP_RATE = 0.3;
+
+function getDropRate(unlocks) {
+  return unlocks && unlocks.bonus_drop_rate ? BONUS_DROP_RATE : BASE_DROP_RATE;
+}
 
 class PowerUp {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+    this.type = POWERUP_TYPES[Math.floor(runRandom() * POWERUP_TYPES.length)];
     this.radius = POWERUP_RADIUS;
     this.active = true;
     this.life = 12;
@@ -28,7 +34,6 @@ class PowerUp {
         break;
       case 'rapid':
         player.powerups.rapid = DURATION;
-        player.fireRate = 0.07;
         break;
       case 'shield':
         player.powerups.shield = true;
@@ -45,11 +50,7 @@ class PowerUp {
       if (player.powerups.spread <= 0) player.powerups.spread = 0;
     }
     if (player.powerups.rapid > 0) {
-      player.powerups.rapid -= dt;
-      if (player.powerups.rapid <= 0) {
-        player.powerups.rapid = 0;
-        player.fireRate = 0.15;
-      }
+      player.powerups.rapid = Math.max(0, player.powerups.rapid - dt);
     }
   }
 

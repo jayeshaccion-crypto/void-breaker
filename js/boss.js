@@ -1,13 +1,32 @@
+const BOSS_DEFS = [
+  {
+    id: 'dreadnought',
+    name: 'The Dreadnought',
+    waveRule: 'fixed',
+    fixedWave: 5,
+    health: 150,
+    hitboxRadius: 35,
+    points: 5000,
+    attackPattern: 'spiral',
+    phaseThreshold: 0.5,
+    summons: { type: 'swarmer', count: 2, intervalSeconds: 8 },
+  },
+];
+
+const DREADNOUGHT_SPIRAL_ROTATION = (300 * Math.PI) / 180;
+
 class Dreadnought {
-  constructor(canvasWidth, canvasHeight) {
+  constructor(canvasWidth, canvasHeight, def = BOSS_DEFS[0]) {
+    this.def = def;
+    this.name = def.name;
     this.x = canvasWidth / 2;
     this.y = -60;
     this.targetY = canvasHeight * 0.3;
-    this.radius = 35;
-    this.health = 150;
-    this.maxHealth = 150;
+    this.radius = def.hitboxRadius;
+    this.health = def.health;
+    this.maxHealth = def.health;
     this.color = '#cc00ff';
-    this.points = 5000;
+    this.points = def.points;
     this.active = true;
     this.isBoss = true;
     this.hitTimer = 0;
@@ -15,7 +34,7 @@ class Dreadnought {
     this.phase = 1;
     this.spiralAngle = 0;
     this.fireTimer = 1.0;
-    this.summonTimer = 8;
+    this.summonTimer = def.summons ? def.summons.intervalSeconds : 8;
     this.weakPointAngle = Math.PI / 2;
     this.weakPointRadius = 10;
     this.entering = true;
@@ -48,14 +67,15 @@ class Dreadnought {
     this.x = Math.max(this.radius, Math.min(this.cw - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(this.ch * 0.5, this.y));
 
-    this.phase = this.health <= this.maxHealth * 0.5 ? 2 : 1;
-    const fireRate = this.phase === 2 ? 0.5 : 1.0;
+    this.phase = this.health < this.maxHealth * this.def.phaseThreshold ? 2 : 1;
+    const fireInterval = this.phase === 2 ? 0.5 : 1.0;
+    this.spiralAngle += DREADNOUGHT_SPIRAL_ROTATION * dt;
     this.fireTimer -= dt;
 
     const attacks = [];
 
     if (this.fireTimer <= 0) {
-      this.fireTimer = fireRate;
+      this.fireTimer = fireInterval;
       const count = 8;
       for (let i = 0; i < count; i++) {
         const a = this.spiralAngle + (i / count) * Math.PI * 2;
@@ -65,17 +85,16 @@ class Dreadnought {
           bspeed: 150,
         });
       }
-      this.spiralAngle += 5 * Math.PI / 180;
     }
 
-    if (this.phase === 2) {
+    if (this.phase === 2 && this.def.summons) {
       this.summonTimer -= dt;
       if (this.summonTimer <= 0) {
-        this.summonTimer = 8;
-        for (let i = 0; i < 2; i++) {
-          const sa = Math.random() * Math.PI * 2;
+        this.summonTimer = this.def.summons.intervalSeconds;
+        for (let i = 0; i < this.def.summons.count; i++) {
+          const sa = runRandom() * Math.PI * 2;
           attacks.push({
-            summon: true, type: 'swarmer',
+            summon: true, type: this.def.summons.type,
             x: this.x + Math.cos(sa) * 50,
             y: this.y + Math.sin(sa) * 50,
           });
@@ -144,6 +163,12 @@ class Dreadnought {
   }
 }
 
+function getBossDefForWave(wave) {
+  const fixed = BOSS_DEFS.find(def => def.waveRule === 'fixed' && def.fixedWave === wave);
+  return fixed || BOSS_DEFS[0];
+}
+
 function spawnBoss(wave, cw, ch) {
-  return new Dreadnought(cw, ch);
+  const def = getBossDefForWave(wave);
+  return new Dreadnought(cw, ch, def);
 }

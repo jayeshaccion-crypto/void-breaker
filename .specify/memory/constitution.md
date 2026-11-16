@@ -1,29 +1,25 @@
 <!--
 Sync Impact Report
 ==================
-Version change: TEMPLATE (unadopted) → 1.0.0
-Bump rationale: Initial ratification; all five principles and both governance sections
-are new, so the first concrete version is 1.0.0.
+Version change: 1.0.0 → 1.0.1
+Bump rationale: PATCH clarification. Principle I now explicitly permits dependency-ordered
+classic browser scripts, preserving direct `index.html` opening and the zero-build runtime.
 
 Modified principles:
-- Added I. Vanilla-Only, Zero-Build Runtime (NON-NEGOTIABLE)
-- Added II. Deterministic Gameplay Contracts
-- Added III. Phase-Scoped Delivery
-- Added IV. Performance and Resource Discipline
-- Added V. Playable, Testable Acceptance
+- I. Vanilla-Only, Zero-Build Runtime (NON-NEGOTIABLE) — clarified script-loading model
 
-Added sections:
-- Additional Constraints
-- Development Workflow and Quality Gates
-- Governance
+Modified sections:
+- Additional Constraints — runtime stack now permits dependency-ordered classic scripts
 
-Removed sections: None (template placeholders replaced).
+Added sections: None
+Removed sections: None
 
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md — Constitution Check gates made concrete
+- ✅ .specify/templates/plan-template.md — Constitution Check wording remains valid
 - ✅ .specify/templates/spec-template.md — Reviewed; no mandatory-section changes required
 - ✅ .specify/templates/tasks-template.md — Reviewed; existing task categories remain compatible
 - ✅ README.md — Reviewed; tech stack and run instructions already align
+- ✅ specs/001-phase-2-expansion/plan.md — Updated to match the clarified script-loading model
 - ✅ void-breaker-spec.md and phase2.md — Reviewed; principles derived from these sources
 
 Follow-up TODOs: None. All placeholders resolved.
@@ -35,14 +31,17 @@ Follow-up TODOs: None. All placeholders resolved.
 
 ### I. Vanilla-Only, Zero-Build Runtime (NON-NEGOTIABLE)
 
-The game MUST run using only HTML5 Canvas, vanilla ES6 JavaScript modules, and the Web Audio
-API. Frameworks, game engines, build steps, bundlers, npm runtime dependencies, external
-image/audio/font assets, and network services MUST NOT be introduced. The project MUST remain
-runnable by opening `index.html` directly or serving the repository with any static file server.
+The game MUST run using only HTML5 Canvas, vanilla ES6 JavaScript source files loaded as classic
+browser scripts in dependency order, and the Web Audio API. Native ES modules MAY be used if they
+preserve direct `index.html` opening and the zero-build runtime. Frameworks, game engines, build
+steps, bundlers, npm runtime dependencies, external image/audio/font assets, and network services
+MUST NOT be introduced. The project MUST remain runnable by opening `index.html` directly or
+serving the repository with any static file server.
 
 Rationale: The zero-build, zero-asset constraint is the defining property of Void Breaker. It
 keeps the game instantly playable, auditable, and portable, and prevents dependency drift from
-changing game behavior.
+changing game behavior. Dependency-ordered classic scripts preserve direct file opening without a
+bundler or module server.
 
 ### II. Deterministic Gameplay Contracts
 
@@ -99,9 +98,9 @@ checks catch regressions that isolated unit checks miss.
 
 ## Additional Constraints
 
-- **Runtime stack**: HTML5 Canvas, vanilla ES6 modules, and Web Audio only. `requestAnimationFrame`
-  drives the loop; game logic uses delta time. No TypeScript, no transpilation, and no package
-  manager runtime dependency.
+- **Runtime stack**: HTML5 Canvas, vanilla ES6 source files loaded as dependency-ordered classic
+  browser scripts, and Web Audio only. `requestAnimationFrame` drives the loop; game logic uses
+  delta time. No TypeScript, no transpilation, and no package manager runtime dependency.
 - **Resolution**: 960x540 logical canvas, scaled to fit the viewport while maintaining aspect
   ratio and letterboxing unused space.
 - **Persistence**: Exactly one key, `voidbreaker.meta`, with shape
@@ -154,4 +153,4 @@ Complexity Tracking. Runtime guidance lives in `README.md`, `void-breaker-spec.m
 phase specification such as `phase2.md`; where those conflict with this constitution, this
 constitution prevails.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-02 | **Last Amended**: 2026-11-02
+**Version**: 1.0.1 | **Ratified**: 2026-11-02 | **Last Amended**: 2026-11-04

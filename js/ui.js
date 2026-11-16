@@ -189,6 +189,26 @@ class UI {
     ctx.restore();
   }
 
+  drawZoneTransition(ctx, zone, timer, duration) {
+    const progress = Math.max(0, Math.min(1, 1 - timer / duration));
+    const fade = Math.sin(progress * Math.PI);
+    ctx.fillStyle = `rgba(0,0,0,${0.35 + fade * 0.35})`;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    const index = getZoneIndex(zone.id) + 1;
+    ctx.save();
+    ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+    ctx.scale(0.94 + fade * 0.06, 0.94 + fade * 0.06);
+    ctx.globalAlpha = 0.55 + fade * 0.45;
+    ctx.fillStyle = '#00ccff';
+    ctx.font = 'bold 38px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Zone ${index} \u2014 ${zone.name}`, 0, 0);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   drawPauseOverlay(ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -208,7 +228,7 @@ class UI {
     const barX = (this.canvas.width - barW) / 2;
     const slide = boss.healthBarSlide || 0;
     const eased = slide < 1 ? 1 - (1 - slide) * (1 - slide) : 1;
-    const barY = 56 + (1 - eased) * -40;
+    const barY = 56 - (1 - eased) * 80;
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
@@ -220,7 +240,8 @@ class UI {
     ctx.fillStyle = '#fff';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('BOSS', this.canvas.width / 2, barY + barH + 14);
+    const label = (boss.name || 'BOSS').toUpperCase();
+    ctx.fillText(label, this.canvas.width / 2, barY + barH + 14);
   }
 
   drawMenu(ctx, highScore) {

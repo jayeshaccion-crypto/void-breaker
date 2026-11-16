@@ -1,10 +1,11 @@
 const PLAYER_RADIUS = 14;
-const MOVE_SPEED = 300;
-const FIRE_RATE = 0.15;
-const DASH_SPEED = 600;
+const MOVE_SPEED = 250;
+const BASE_SHOTS_PER_SECOND = 6;
+const DASH_DISTANCE = 150;
 const DASH_DURATION = 0.15;
+const DASH_SPEED = DASH_DISTANCE / DASH_DURATION;
 const DASH_COOLDOWN = 1.5;
-const MAX_HEALTH = 5;
+const MAX_HEALTH = 3;
 const JOYSTICK_RADIUS = 55;
 const DASH_BTN_RADIUS = 30;
 
@@ -25,7 +26,8 @@ class Player {
     this.invulnerable = false;
     this.invulnTimer = 0;
     this.fireTimer = 0;
-    this.fireRate = FIRE_RATE;
+    this.baseShotsPerSecond = BASE_SHOTS_PER_SECOND;
+    this.baseDashCooldown = DASH_COOLDOWN;
     this.keys = {};
     this.powerups = {};
     this.inputBlocked = false;
@@ -44,22 +46,35 @@ class Player {
     this.thrusterTimer = 0;
 
     this.upgrades = [];
-    this.upgradeData = {
+    this.upgradeData = this.createUpgradeData();
+
+    this.setupInput();
+  }
+
+  createUpgradeData() {
+    return {
       fireRateMult: 1,
       dashCdReduction: 0,
-      scattershot: false,
+      scattershotStacks: 0,
       pickupRange: 1,
-      chainLightning: false,
-      afterburn: false,
-      ghostDash: false,
-      bouncer: false,
+      chainLightningStacks: 0,
+      afterburnStacks: 0,
+      ghostDashStacks: 0,
+      bouncerStacks: 0,
       blackHole: false,
       overload: false,
       twinShip: false,
       overloadCounter: 0,
     };
+  }
 
-    this.setupInput();
+  getFireInterval() {
+    const rapidMult = this.powerups.rapid > 0 ? 2 : 1;
+    return 1 / (this.baseShotsPerSecond * this.upgradeData.fireRateMult * rapidMult);
+  }
+
+  getDashCooldown() {
+    return Math.max(0.1, this.baseDashCooldown - this.upgradeData.dashCdReduction);
   }
 
   canvasCoords(clientX, clientY) {
@@ -153,7 +168,7 @@ class Player {
     if (this.isDashing || this.dashCooldown > 0) return;
     const dx = this.joystick.dx || 0, dy = this.joystick.dy || 0;
     if (dx === 0 && dy === 0) return;
-    this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN - this.upgradeData.dashCdReduction;
+    this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = this.getDashCooldown();
     this.dashDir = { x: dx, y: dy };
     this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
     sound.dash();
@@ -161,6 +176,12 @@ class Player {
 
   update(dt) {
     if (this.inputBlocked) return;
+
+    for (const key of ['spread', 'rapid']) {
+      if (this.powerups[key] > 0) {
+        this.powerups[key] = Math.max(0, this.powerups[key] - dt);
+      }
+    }
 
     if (this.invulnerable) {
       this.invulnTimer -= dt;
@@ -194,7 +215,7 @@ class Player {
       this.y += dy * this.speed * dt;
 
       if (this.joystick.active && (this.keys['shift'] || this.dashTouched) && this.dashCooldown <= 0 && (dx !== 0 || dy !== 0)) {
-        this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = DASH_COOLDOWN - this.upgradeData.dashCdReduction;
+        this.isDashing = true; this.dashTimer = DASH_DURATION; this.dashCooldown = this.getDashCooldown();
         this.dashDir = { x: dx, y: dy };
         this.invulnerable = true; this.invulnTimer = DASH_DURATION + 0.1;
         sound.dash();
@@ -212,11 +233,10 @@ class Player {
       this.angle = Math.atan2(aimDy, aimDx);
     }
 
-    const adjustedFireRate = this.fireRate * this.upgradeData.fireRateMult;
     this.fireTimer -= dt;
     this.shooting = (this.mouseDown || this.keys[' '] || this.aimTouch.active) && this.fireTimer <= 0;
     if (this.shooting) {
-      this.fireTimer = adjustedFireRate;
+      this.fireTimer = this.getFireInterval();
       this.muzzleFlash = 0.06;
     }
   }
@@ -235,23 +255,26 @@ class Player {
     return this.health <= 0;
   }
 
-  reset() {
+  reset(runModifiers = {}) {
+    const maxHealthBonus = runModifiers.maxHealthBonus || 0;
     this.x = this.canvas.width / 2;
     this.y = this.canvas.height / 2;
-    this.health = MAX_HEALTH;
+    this.angle = 0;
+    this.speed = MOVE_SPEED;
+    this.maxHealth = MAX_HEALTH + maxHealthBonus;
+    this.health = this.maxHealth;
+    this.baseShotsPerSecond = BASE_SHOTS_PER_SECOND;
+    this.baseDashCooldown = runModifiers.dashCooldown || DASH_COOLDOWN;
     this.isDashing = false;
     this.invulnerable = false;
     this.invulnTimer = 0;
     this.dashCooldown = 0;
     this.dashTimer = 0;
     this.fireTimer = 0;
+    this.shooting = false;
     this.powerups = {};
     this.upgrades = [];
-    this.upgradeData = {
-      fireRateMult: 1, dashCdReduction: 0, scattershot: false, pickupRange: 1,
-      chainLightning: false, afterburn: false, ghostDash: false, bouncer: false,
-      blackHole: false, overload: false, twinShip: false, overloadCounter: 0,
-    };
+    this.upgradeData = this.createUpgradeData();
     this.joystick.active = false;
     this.joystick.id = -1;
     this.joystick.dx = 0;

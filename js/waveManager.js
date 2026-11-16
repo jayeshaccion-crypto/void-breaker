@@ -12,6 +12,7 @@ class WaveManager {
     this.totalEnemiesThisWave = 0;
     this.isBossWave = false;
     this.bossSpawned = false;
+    this.bossDefeated = false;
   }
 
   startNextWave() {
@@ -20,10 +21,11 @@ class WaveManager {
     this.enemiesSpawned = 0;
     this.enemiesAlive = 0;
     this.bossSpawned = false;
+    this.bossDefeated = false;
 
     if (this.isBossWave) {
-      this.totalEnemiesThisWave = 3;
-      this.enemiesPerWave = 3;
+      this.totalEnemiesThisWave = 0;
+      this.enemiesPerWave = 0;
     } else {
       this.enemiesPerWave = 5 + (this.wave - 1) * 3;
       this.totalEnemiesThisWave = this.enemiesPerWave;
@@ -44,6 +46,8 @@ class WaveManager {
       return { boss: true, wave: this.wave, w: canvasWidth, h: canvasHeight };
     }
 
+    if (this.isBossWave) return null;
+
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.enemiesSpawned < this.totalEnemiesThisWave) {
       this.spawnTimer = this.spawnInterval;
@@ -52,14 +56,14 @@ class WaveManager {
 
       let type = 'swarmer';
       if (this.wave >= 3 && this.wave < 6) {
-        type = Math.random() < 0.5 ? 'swarmer' : 'tank';
+        type = runRandom() < 0.5 ? 'swarmer' : 'tank';
       } else if (this.wave >= 6) {
-        const r = Math.random();
+        const r = runRandom();
         if (r < 0.33) type = 'swarmer';
         else if (r < 0.66) type = 'tank';
         else type = 'sniper';
       } else if (this.wave >= 2) {
-        type = Math.random() < 0.3 ? 'tank' : 'swarmer';
+        type = runRandom() < 0.3 ? 'tank' : 'swarmer';
       }
 
       return { enemy: { type, x: canvasWidth, y: canvasHeight, px: playerX, py: playerY } };
@@ -72,15 +76,20 @@ class WaveManager {
   }
 
   onEnemyKilled() {
-    this.enemiesAlive--;
-    if (this.enemiesAlive <= 0 && this.enemiesSpawned >= this.totalEnemiesThisWave && !this.isBossWave) {
+    if (this.isBossWave && this.bossDefeated) return;
+    this.enemiesAlive = Math.max(0, this.enemiesAlive - 1);
+    if (this.isBossWave) return;
+    if (this.enemiesAlive <= 0 && this.enemiesSpawned >= this.totalEnemiesThisWave) {
       this.waitingForNextWave = true;
       this.waveTimer = this.waveDelay;
     }
-    if (this.isBossWave && this.enemiesAlive <= 0) {
-      this.waitingForNextWave = true;
-      this.waveTimer = this.waveDelay + 1;
-    }
+  }
+
+  onBossDefeated() {
+    this.enemiesAlive = 0;
+    this.bossDefeated = true;
+    this.waitingForNextWave = true;
+    this.waveTimer = this.waveDelay + 1;
   }
 
   isLastBoss() {
@@ -97,5 +106,6 @@ class WaveManager {
     this.totalEnemiesThisWave = 0;
     this.isBossWave = false;
     this.bossSpawned = false;
+    this.bossDefeated = false;
   }
 }

@@ -273,8 +273,8 @@ crossfaded with `AudioContext.createGain()` ramp functions:
 - **Rhythm layer**: starts wave 3, pulsing beat, tempo = `90 + wave × 2` 
   BPM, capped at 160 BPM
 - **Intensity layer**: low-pass filter cutoff frequency scales inversely 
-  with current on-screen enemy count (more enemies = more open/brighter 
-  filter)
+  with current on-screen enemy count (more enemies = darker/closed filter,
+  fewer enemies = brighter/open filter)
 - **Boss layer**: swaps to a detuned sawtooth oscillator at 110Hz root 
   while a boss is active, 1.5s gain-ramp crossfade in and out
 

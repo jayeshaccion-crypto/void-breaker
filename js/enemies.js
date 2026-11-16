@@ -126,12 +126,12 @@ class Enemy {
 }
 
 function spawnEnemy(type, canvasWidth, canvasHeight, playerX, playerY) {
-  const side = Math.floor(Math.random() * 4);
+  const side = Math.floor(runRandom() * 4);
   let x, y;
   const margin = 40;
-  if (side === 0) { x = -margin; y = Math.random() * canvasHeight; }
-  else if (side === 1) { x = canvasWidth + margin; y = Math.random() * canvasHeight; }
-  else if (side === 2) { x = Math.random() * canvasWidth; y = -margin; }
-  else { x = Math.random() * canvasWidth; y = canvasHeight + margin; }
+  if (side === 0) { x = -margin; y = runRandom() * canvasHeight; }
+  else if (side === 1) { x = canvasWidth + margin; y = runRandom() * canvasHeight; }
+  else if (side === 2) { x = runRandom() * canvasWidth; y = -margin; }
+  else { x = runRandom() * canvasWidth; y = canvasHeight + margin; }
   return new Enemy(type, x, y, playerX, playerY);
 }

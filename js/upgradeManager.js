@@ -1,53 +1,96 @@
 const UPGRADE_CARDS = [
   {
     id: 'overclock', name: 'Overclock', tier: 1, unique: false,
-    desc: 'Fire rate +15%', apply: (p) => { p.upgradeData.fireRateMult *= 0.87; },
+    desc: 'Fire rate x1.15 per stack',
+    stackRule: 'multiplicative',
+    effect: { fireRateMultiplier: 1.15 },
   },
   {
     id: 'armor_plating', name: 'Armor Plating', tier: 1, unique: false,
-    desc: 'Max HP +1', apply: (p) => { p.maxHealth++; p.health = Math.min(p.health + 1, p.maxHealth); },
+    desc: 'Max HP +1 per stack',
+    stackRule: 'additive',
+    effect: { maxHealth: 1 },
   },
   {
     id: 'quick_dash', name: 'Quick Dash', tier: 1, unique: false,
-    desc: 'Dash cooldown -0.3s', apply: (p) => { p.upgradeData.dashCdReduction += 0.3; },
+    desc: 'Dash cooldown -0.3s (floor 0.1s)',
+    stackRule: 'additive',
+    effect: { dashCooldownReduction: 0.3, dashCooldownFloor: 0.1 },
   },
   {
     id: 'scattershot', name: 'Scattershot', tier: 1, unique: false,
-    desc: 'Bullets split into 2 on impact', apply: (p) => { p.upgradeData.scattershot = true; },
+    desc: '2 split projectiles per stack',
+    stackRule: 'split-count',
+    effect: { scattershotStacks: 1, splitProjectilesPerStack: 2 },
   },
   {
     id: 'magnet', name: 'Magnet', tier: 1, unique: false,
-    desc: 'Pickup radius ×2', apply: (p) => { p.upgradeData.pickupRange *= 2; },
+    desc: 'Pickup radius x2 per stack',
+    stackRule: 'multiplicative',
+    effect: { pickupRangeMultiplier: 2 },
   },
   {
     id: 'chain_lightning', name: 'Chain Lightning', tier: 2, unique: false,
-    desc: 'Every 5th bullet arcs to a nearby enemy', apply: (p) => { p.upgradeData.chainLightning = true; },
+    desc: 'Every 5th hit arcs to +1 target per stack',
+    stackRule: 'target-count',
+    effect: { chainLightningStacks: 1, triggerEvery: 5 },
   },
   {
     id: 'afterburn', name: 'Afterburn', tier: 2, unique: false,
-    desc: 'Bullets leave a fire trail', apply: (p) => { p.upgradeData.afterburn = true; },
+    desc: 'Trail damage +1 per stack',
+    stackRule: 'additive',
+    effect: { afterburnStacks: 1 },
   },
   {
     id: 'ghost_dash', name: 'Ghost Dash', tier: 2, unique: false,
-    desc: 'Dash passes through + damages enemies', apply: (p) => { p.upgradeData.ghostDash = true; },
+    desc: 'Dash-contact damage +1 per stack',
+    stackRule: 'additive',
+    effect: { ghostDashStacks: 1 },
   },
   {
     id: 'bouncer', name: 'Bouncer', tier: 2, unique: false,
-    desc: 'Bullets ricochet off walls once', apply: (p) => { p.upgradeData.bouncer = true; },
+    desc: 'Wall ricochet +1 per stack',
+    stackRule: 'additive',
+    effect: { bouncerStacks: 1 },
   },
   {
     id: 'black_hole', name: 'Black Hole', tier: 3, unique: true,
-    desc: 'Q launches singularity, 30s cooldown', apply: (p) => { p.upgradeData.blackHole = true; },
+    desc: 'Q launches singularity, 30s cooldown',
+    stackRule: 'additive',
+    effect: { unlock: 'blackHole' },
   },
   {
     id: 'overload', name: 'Overload', tier: 3, unique: true,
-    desc: 'Every 10th kill: screen-wide damage pulse', apply: (p) => { p.upgradeData.overload = true; },
+    desc: 'Every 10th kill: 3 damage pulse',
+    stackRule: 'additive',
+    effect: { unlock: 'overload', killInterval: 10, damage: 3 },
   },
   {
     id: 'twin_ship', name: 'Twin Ship', tier: 3, unique: true,
-    desc: 'Drone mirrors your movement and fires', apply: (p) => { p.upgradeData.twinShip = true; },
+    desc: 'Drone mirrors movement and fire',
+    stackRule: 'additive',
+    effect: { unlock: 'twinShip', offset: 40 },
   },
 ];
+
+function applyCardEffect(card, player) {
+  const data = player.upgradeData;
+  const effect = card.effect || {};
+
+  if (effect.fireRateMultiplier) data.fireRateMult *= effect.fireRateMultiplier;
+  if (effect.maxHealth) {
+    player.maxHealth += effect.maxHealth;
+    player.health = Math.min(player.health + effect.maxHealth, player.maxHealth);
+  }
+  if (effect.dashCooldownReduction) data.dashCdReduction += effect.dashCooldownReduction;
+  if (effect.scattershotStacks) data.scattershotStacks += effect.scattershotStacks;
+  if (effect.pickupRangeMultiplier) data.pickupRange *= effect.pickupRangeMultiplier;
+  if (effect.chainLightningStacks) data.chainLightningStacks += effect.chainLightningStacks;
+  if (effect.afterburnStacks) data.afterburnStacks += effect.afterburnStacks;
+  if (effect.ghostDashStacks) data.ghostDashStacks += effect.ghostDashStacks;
+  if (effect.bouncerStacks) data.bouncerStacks += effect.bouncerStacks;
+  if (effect.unlock) data[effect.unlock] = true;
+}
 
 class UpgradeManager {
   constructor() {
@@ -60,7 +103,10 @@ class UpgradeManager {
   }
 
   reset() {
-    this.pool = UPGRADE_CARDS.map(c => ({ ...c }));
+    this.pool = UPGRADE_CARDS.map(card => ({
+      ...card,
+      effect: { ...card.effect },
+    }));
     this.offered = [];
     this.lastPick = null;
     this.pickCount = 0;
@@ -82,37 +128,47 @@ class UpgradeManager {
   selectCards(wave) {
     const tiers = this.getAvailableTiers(wave);
     const weights = this.tierWeights(wave);
-    const eligible = this.pool.filter(c =>
-      tiers.includes(c.tier) && !this.offered.some(o => o.id === c.id)
-    );
-    if (eligible.length === 0) return [];
+    const eligible = this.pool.filter(card => tiers.includes(card.tier));
+
+    if (eligible.length <= 3) {
+      this.offered = eligible.slice();
+      return this.offered;
+    }
 
     const picked = [];
-    const usedIds = new Set();
-    for (let i = 0; i < 3; i++) {
-      let attempts = 0;
-      let card = null;
-      while (!card && attempts < 50) {
-        attempts++;
-        const r = Math.random();
-        let cum = 0, chosenTier = tiers[0];
-        for (const t of tiers) { cum += weights[t]; if (r < cum) { chosenTier = t; break; } }
-        const pool = eligible.filter(c => c.tier === chosenTier && !usedIds.has(c.id));
-        if (pool.length > 0) card = pool[Math.floor(Math.random() * pool.length)];
+    const used = new Set();
+
+    while (picked.length < 3) {
+      const remaining = eligible.filter(card => !used.has(card.id));
+      if (remaining.length === 0) break;
+
+      const activeTiers = tiers.filter(tier => remaining.some(card => card.tier === tier));
+      if (activeTiers.length === 0) break;
+
+      let totalWeight = 0;
+      for (const tier of activeTiers) totalWeight += weights[tier];
+
+      let roll = runRandom() * totalWeight;
+      let chosenTier = activeTiers[activeTiers.length - 1];
+      for (const tier of activeTiers) {
+        roll -= weights[tier];
+        if (roll <= 0) { chosenTier = tier; break; }
       }
-      if (!card) break;
+
+      const tierPool = remaining.filter(card => card.tier === chosenTier);
+      const card = tierPool[Math.floor(runRandom() * tierPool.length)];
       picked.push(card);
-      usedIds.add(card.id);
+      used.add(card.id);
     }
 
     this.offered = picked;
-    return picked;
+    return this.offered;
   }
 
   pick(index) {
     const card = this.offered[index];
     if (!card) return null;
-    if (card.unique) this.pool = this.pool.filter(c => c.id !== card.id);
+    if (card.unique) this.pool = this.pool.filter(entry => entry.id !== card.id);
     this.offered = [];
     this.pickCount++;
     if (card.unique) this.uniquePicked[card.id] = true;
@@ -121,8 +177,13 @@ class UpgradeManager {
   }
 
   autoPick() {
-    const idx = Math.floor(Math.random() * this.offered.length);
-    return this.pick(idx);
+    if (this.offered.length === 0) return null;
+    const index = Math.floor(runRandom() * this.offered.length);
+    return this.pick(index);
+  }
+
+  apply(card, player) {
+    if (card) applyCardEffect(card, player);
   }
 }
 
